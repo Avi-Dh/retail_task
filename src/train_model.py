@@ -80,7 +80,8 @@ class LinearRegression:
                     gradient_J += regurlarization_term
                 #no regularization
                 elif regularization == "none":
-                    pass 
+                    pass
+         
                 else:
                     return ValueError("Invalid regularization type")
                 
@@ -93,6 +94,7 @@ class LinearRegression:
         else:
             raise ValueError("Invalid method type")
     
+        
     #Training and testing the models performance using K fold cross validation. 
     def KCV(self, X, y, k, regularization= "none", method = "none"):
         #Splitting the data into k buckets using the class kfoldcv
