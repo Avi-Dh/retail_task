@@ -4,15 +4,15 @@ import pickle as pkl
 import pandas as pd
 from itertools import combinations_with_replacement
 
-data = pd.read_csv("/Users/manasvenkatasairavulapalli/Desktop/Computer Science stuff/Pure CS/Introduction to Machine Learning/Assignments/life-expectancy-prediction/data/processed_data.csv")
+data = pd.read_csv("/Users/avi/Desktop/university/sem_5/Machine_Learning/Avi_Dhall_A1/retail_task/data/cleaned_data.csv")
 
 
 #isolating the target variable and vectorizing it for matrix operations
-y = data['Life expectancy']
+y = data['avg_purchase_value']
 y = np.array(y).reshape(-1,1)
 
 #Isolating the features and getting the number rows and columns for future use 
-X = data.drop(columns=['Life expectancy'])
+X = data.drop(columns=['avg_purchase_value'])
 
 
 class Regression:
@@ -37,7 +37,7 @@ class Regression:
         theta = np.random.rand(X.shape[1],1) * 0.01
 
         #initializing hyperparameters and epochs
-        Lambda = 0.01
+        Lambda = 0.001
         alpha = 0.1
         iterations = 10000
         
@@ -254,9 +254,10 @@ def main():
 
     print("Average Performance:", avg_perf)
 
-    
+    plot_cost_history(model.cost_history)
+    plot_predictions(predictions)
 
-    model.save("/Users/manasvenkatasairavulapalli/Desktop/Computer Science stuff/Pure CS/Introduction to Machine Learning/Assignments/life-expectancy-prediction/models/regression_model_final2.pkl")
+    model.save("/Users/avi/Desktop/university/sem_5/Machine_Learning/Avi_Dhall_A1/retail_task/models/regression_model_not_final.pkl")
 
 
 
