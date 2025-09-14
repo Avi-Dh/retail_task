@@ -2,10 +2,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pickle as pkl 
 import pandas as pd
+from itertools import combinations_with_replacement
 
-#Loading the cleaned data
-data = pd.read_csv("/Users/avi/Desktop/university/sem_5/Machine_Learning/Avi_Dhall_A1/life_expectancy_task/data/clean_dropna.csv")
-# data = pd.read_csv("/Users/manasvenkatasairavulapalli/Desktop/Computer Science stuff/Pure CS/Introduction to Machine Learning/Assignments/life-expectancy-prediction/data/cleaned_data.csv")
+data = pd.read_csv("/Users/manasvenkatasairavulapalli/Desktop/Computer Science stuff/Pure CS/Introduction to Machine Learning/Assignments/life-expectancy-prediction/data/processed_data.csv")
+
 
 #isolating the target variable and vectorizing it for matrix operations
 y = data['Life expectancy']
@@ -13,28 +13,37 @@ y = np.array(y).reshape(-1,1)
 
 #Isolating the features and getting the number rows and columns for future use 
 X = data.drop(columns=['Life expectancy'])
-X = np.c_[np.ones(X.shape[0]), X]
-m,n = X.shape
 
 
-class LinearRegression:
+class Regression:
     def __init__(self, regularization= "none", method = "none"):
         self.method = method
         self.regularization = regularization
         self.theta = None 
         self.cost_history = []
         
-    def linear_regression_model(self, X, y, regularization= "none", method = "none"): 
+    def linear_regression(self, X, y, regularization= "none", method = "none", polynomial = 1): 
+        
+        
         #Since Matrix operations are faster in numpy better to convert them       
         X = np.array(X)
         y = np.array(y)
+        self.degree = polynomial
+        if polynomial > 1:
+            X = self.polynomial_features(X, degree=polynomial)
         
         #intializing theta with small random values
+        X = np.c_[np.ones(X.shape[0]), X]
         theta = np.random.rand(X.shape[1],1) * 0.01
-        Lambda = 0.2
+
+        #initializing hyperparameters and epochs
+        Lambda = 0.01
         alpha = 0.1
-        iterations = 2000
+        iterations = 10000
+        
+        #initializeing the rows and columns
         m = X.shape[0]
+        n = X.shape[1]
         
         #Normal Equation 
         if method == "normal_equation":
@@ -44,10 +53,10 @@ class LinearRegression:
             elif regularization == "L2":
                 I = np.eye(X.shape[1])
                 I[0,0] = 0
-                self.theta = np.linalg.inv(X.T @ X + Lambda * I) @ X.T @ y
+                self.theta = np.linalg.pinv(X.T @ X + Lambda * I) @ X.T @ y
             
             else:   
-                self.theta = np.linalg.inv(X.T @ X) @ X.T @ y
+                self.theta = np.linalg.pinv(X.T @ X) @ X.T @ y
             
         #Gradient Descent 
         elif method == "gradient_descent":
@@ -80,8 +89,7 @@ class LinearRegression:
                     gradient_J += regurlarization_term
                 #no regularization
                 elif regularization == "none":
-                    pass
-         
+                    pass 
                 else:
                     return ValueError("Invalid regularization type")
                 
@@ -91,27 +99,43 @@ class LinearRegression:
             
             self.theta = theta
             self.cost_history.append(cost_history_fold)
+        
         else:
             raise ValueError("Invalid method type")
-    
         
+    def polynomial_features(self, X, degree):
+        X = np.array(X)
+        if degree == 1:
+            return X
+        
+        else: 
+            
+            m, n = X.shape
+            poly = [X]
+            
+            for deg in range(2, degree + 1):
+                for items in combinations_with_replacement(range(n), deg):
+                    new_feature = np.prod(X[:, items], axis=1, keepdims=True)
+                    poly.append(new_feature)
+            return np.hstack(poly)
+
     #Training and testing the models performance using K fold cross validation. 
-    def KCV(self, X, y, k, regularization= "none", method = "none"):
+    def KCV(self, X, y, k, regularization= "none", method = "none", polynomial = 1):
         #Splitting the data into k buckets using the class kfoldcv
+        X = np.array(X)
         buckets = kfoldcv.splitting(X, k)
         
         #metrics per fold
         Performance = []
-        
         #Predictions per fold
         Predictions = []
-        
         Average_Performance = {"avg_mse": None, "avg_rmse": None, "avg_r2": None}  # Default in case no folds
+       
         # We define the training and test data and iterate till we have trained and tested on all the buckets
-        for n,(train_indices, test_indices) in enumerate(buckets):
+        for n,(train_indices, test_indices) in enumerate((buckets)):
             X_train, X_test = X[train_indices], X[test_indices]
             y_train, y_test = y[train_indices], y[test_indices]
-            self.linear_regression_model(X_train, y_train, regularization, method) 
+            self.linear_regression(X_train, y_train, regularization, method, polynomial) 
             
             y_hat = self.Predict(X_test)
             
@@ -134,9 +158,13 @@ class LinearRegression:
 
     def Predict(self,X):
         X = np.array(X)
-        #y_hat is the predicted value 
-        return X @ self.theta
-    
+        if hasattr(self,"degree") and self.degree > 1:
+            X = self.polynomial_features(X, degree=self.degree)
+
+        X_final = np.c_[np.ones(X.shape[0]), X]
+        #y_hat is the predicted value
+        return X_final @ self.theta
+
     #save model
     def save(self, file):
         with open(file, 'wb') as f:
@@ -213,25 +241,24 @@ def plot_predictions(predictions):
         axes[i].set_title(f'Fold {i+1} Predictions')
         axes[i].grid(True)
     plt.suptitle('Predicted vs. Actual Values per Fold')
-    # plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
     plt.show()
-    
+\
 def main():
-    model = LinearRegression()
-
-    # run training with k-bucket cross-validation using gradient descent
+    
+    model = Regression()
+    # Run K-fold cross-validation
     avg_perf, predictions, perf_per_bucket = model.KCV(
-        X, y, k=5, regularization="L2", method="normal_equation"
+        X, y, k=5, regularization="L2", method="normal_equation", polynomial=1
     )
 
     print("Average Performance:", avg_perf)
+
     
-    # Plotting
-    if model.cost_history:
-        plot_cost_history(model.cost_history)
-    
-    plot_predictions(predictions)
+
+    model.save("/Users/manasvenkatasairavulapalli/Desktop/Computer Science stuff/Pure CS/Introduction to Machine Learning/Assignments/life-expectancy-prediction/models/regression_model_final2.pkl")
+
 
 
 if __name__ == "__main__":
-    main()
+    main()  
